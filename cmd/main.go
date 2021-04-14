@@ -26,8 +26,6 @@ KoboRoot with udev rules
 .kloud/config.yml
 */
 
-// TODO: Synchronize deletion?
-
 func getLocalFiles(root string) (map[string]int64, error) {
 	ret := map[string]int64{}
 
@@ -52,18 +50,25 @@ func getLocalFiles(root string) (map[string]int64, error) {
 	return ret, nil
 }
 
-func diffFiles(local, remote map[string]int64) (ret []string) {
+func diffFiles(local, remote map[string]int64) (toDownload, toDelete []string) {
 	for remoteFileName, remoteFileSize := range remote {
 		localFileSize, localFileExists := local[remoteFileName]
 		if localFileExists == false || localFileSize != remoteFileSize {
-			ret = append(ret, remoteFileName)
+			toDownload = append(toDownload, remoteFileName)
 		}
 	}
 
-	return ret
+	for localFileName := range local {
+		_, remoteFileExists := remote[localFileName]
+		if remoteFileExists == false {
+			toDelete = append(toDelete, localFileName)
+		}
+	}
+
+	return toDownload, toDelete
 }
 
-func syncFiles(client nextcloud.Client, files []string) error {
+func downloadFiles(client nextcloud.Client, files []string) error {
 	for _, fileName := range files {
 		fileContent, err := client.DownloadFile(fileName)
 		if err != nil {
@@ -79,6 +84,28 @@ func syncFiles(client nextcloud.Client, files []string) error {
 
 		if err := ioutil.WriteFile(fullPath, fileContent, 0644); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func deleteFiles(files []string) error {
+	for _, fileName := range files {
+		fullPath := path.Join(consts.SyncFolder, fileName)
+
+		if err := os.Remove(fullPath); err != nil {
+			return err
+		}
+
+		dir := path.Dir(fullPath)
+		files, err := ioutil.ReadDir(dir)
+		if err != nil {
+			return err
+		}
+
+		if len(files) == 0 {
+			os.Remove(dir)
 		}
 	}
 
@@ -125,11 +152,16 @@ func main() {
 	}
 	logger.WithField("remote_files", remoteFiles).Info("Retrieved remote files")
 
-	toSyncFiles := diffFiles(localFiles, remoteFiles)
-	logger.WithField("to_sync_files", toSyncFiles).Info("Files to sync")
+	toDownload, toDelete := diffFiles(localFiles, remoteFiles)
+	logger.WithField("to_download", toDownload).Info("Files to download")
+	logger.WithField("to_delete", toDelete).Info("Files to delete")
 
-	if err := syncFiles(ncClient, toSyncFiles); err != nil {
-		logger.WithField("error", err).Fatal("Failed to synchronize files")
+	if err := downloadFiles(ncClient, toDownload); err != nil {
+		logger.WithField("error", err).Fatal("Failed to download files")
 	}
+	if err := deleteFiles(toDelete); err != nil {
+		logger.WithField("error", err).Fatal("Failed to delete files")
+	}
+
 	logger.Info("Success")
 }
