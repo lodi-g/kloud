@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -16,15 +17,8 @@ import (
 
 var logger = logrus.New()
 
-/*
-Installation:
-
-KoboRoot with udev rules
-
-.kloud/kloud
-.kloud/kloud.log
-.kloud/config.yml
-*/
+//go:embed cacert.pem
+var cacert []byte
 
 func getLocalFiles(root string) (map[string]int64, error) {
 	ret := map[string]int64{}
@@ -139,7 +133,7 @@ func main() {
 	}
 	logger.WithField("local_files", localFiles).Info("Retrieved local files")
 
-	ncClient, err := nextcloud.NewClient(consts.TLSFilePath, config.Server, config.ShareID)
+	ncClient, err := nextcloud.NewClient(cacert, config.Server, config.ShareID)
 	if err != nil {
 		logger.WithField("error", err).Fatal("Impossible to create NextCloud client")
 		os.Exit(1)

@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"net/http"
-	"os"
 )
 
 // Client is a NextCloud client for Kloud, it wraps http.Client
@@ -15,14 +14,9 @@ type Client struct {
 }
 
 // NewClient creates a new NextCloud client with the configured TLS settings
-func NewClient(tlsFilePath, server, shareID string) (Client, error) {
-	caCert, err := os.ReadFile(tlsFilePath)
-	if err != nil {
-		return Client{}, err
-	}
-
+func NewClient(cacert []byte, server, shareID string) (Client, error) {
 	caCertPool := x509.NewCertPool()
-	ok := caCertPool.AppendCertsFromPEM(caCert)
+	ok := caCertPool.AppendCertsFromPEM(cacert)
 	if ok == false {
 		panic(ok)
 	}
