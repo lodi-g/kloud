@@ -7,5 +7,4 @@ const (
 	SDMountPoint = "/mnt/onboard"
 	SyncFolder   = SDMountPoint + "/KloudSync"
 	InternalDir  = SDMountPoint + "/.kloud"
-	TLSFilePath  = InternalDir + "/cacert.pem"
 )

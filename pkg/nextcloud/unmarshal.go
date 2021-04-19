@@ -31,8 +31,9 @@ func (files *Files) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		return err
 	}
 
+	// Iterate through results, appending them to the files list
 	for _, resp := range cxd.Responses[1:] {
-		// is a directory
+		// Do not process directories
 		if resp.Collection.Local == "collection" {
 			continue
 		}

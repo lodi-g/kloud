@@ -5,8 +5,8 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
+	"strings"
 
 	"kloud/pkg/config"
 	"kloud/pkg/consts"
@@ -23,7 +23,8 @@ var cacert []byte
 func getLocalFiles(root string) (map[string]int64, error) {
 	ret := map[string]int64{}
 
-	walkFunc := func(path string, fileinfo fs.FileInfo, err error) error {
+	// Walk the local filesystems and return a map[filename]filesize
+	err := filepath.Walk(root, func(path string, fileinfo fs.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -32,19 +33,19 @@ func getLocalFiles(root string) (map[string]int64, error) {
 			return nil
 		}
 
-		prefixLen := len(consts.SyncFolder) - 1
-		ret[path[prefixLen:]] = fileinfo.Size()
+		relativePath := strings.ReplaceAll(path, consts.SyncFolder+"/", "")
+		ret[relativePath] = fileinfo.Size()
 		return nil
-	}
+	})
 
-	if err := filepath.Walk(root, walkFunc); err != nil {
+	if err != nil {
 		return nil, err
 	}
-
 	return ret, nil
 }
 
 func diffFiles(local, remote map[string]int64) (toDownload, toDelete []string) {
+	// Find what files should be downloaded from the remote server
 	for remoteFileName, remoteFileSize := range remote {
 		localFileSize, localFileExists := local[remoteFileName]
 		if localFileExists == false || localFileSize != remoteFileSize {
@@ -52,6 +53,7 @@ func diffFiles(local, remote map[string]int64) (toDownload, toDelete []string) {
 		}
 	}
 
+	// Find what files should be deleted from the local filesystem
 	for localFileName := range local {
 		_, remoteFileExists := remote[localFileName]
 		if remoteFileExists == false {
@@ -63,20 +65,24 @@ func diffFiles(local, remote map[string]int64) (toDownload, toDelete []string) {
 }
 
 func downloadFiles(client nextcloud.Client, files []string) error {
+	// Iterate over the files and download each one into the sync directory
 	for _, fileName := range files {
+		// Download file
 		fileContent, err := client.DownloadFile(fileName)
 		if err != nil {
 			return err
 		}
 
-		fullPath := path.Join(consts.SyncFolder, fileName)
-		dir := path.Dir(fullPath)
+		// Create directory if needed
+		fullPath := filepath.Join(consts.SyncFolder, fileName)
+		dir := filepath.Dir(fullPath)
 
-		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		if err := os.MkdirAll(dir, 0700); err != nil {
 			return err
 		}
 
-		if err := ioutil.WriteFile(fullPath, fileContent, 0644); err != nil {
+		// Write file
+		if err := ioutil.WriteFile(fullPath, fileContent, 0600); err != nil {
 			return err
 		}
 	}
@@ -85,20 +91,22 @@ func downloadFiles(client nextcloud.Client, files []string) error {
 }
 
 func deleteFiles(files []string) error {
+	// Iterate over the list of files and delete them
 	for _, fileName := range files {
-		fullPath := path.Join(consts.SyncFolder, fileName)
-
+		// Delete the file
+		fullPath := filepath.Join(consts.SyncFolder, fileName)
 		if err := os.Remove(fullPath); err != nil {
 			return err
 		}
 
-		dir := path.Dir(fullPath)
+		// Delete the directory if it's empty (and not the root directory)
+		dir := filepath.Dir(fullPath)
 		files, err := ioutil.ReadDir(dir)
 		if err != nil {
 			return err
 		}
 
-		if len(files) == 0 {
+		if len(files) == 0 && dir != consts.SyncFolder {
 			os.Remove(dir)
 		}
 	}
@@ -118,14 +126,15 @@ func init() {
 }
 
 func main() {
+	// Start and read config
 	config, err := config.Get()
 	if err != nil {
 		logger.WithField("error", err).Fatal("Cannot retrieve configuration")
 		os.Exit(1)
 	}
-
 	logger.Infof("Started with configuration: %+v", config)
 
+	// Get the list of files in the sync directory
 	localFiles, err := getLocalFiles(consts.SyncFolder)
 	if err != nil {
 		logger.WithField("error", err).Fatal("Cannot read local filesystem")
@@ -133,6 +142,7 @@ func main() {
 	}
 	logger.WithField("local_files", localFiles).Info("Retrieved local files")
 
+	// Create the nextcloud client and use it to get the list of files in the server
 	ncClient, err := nextcloud.NewClient(cacert, config.Server, config.ShareID)
 	if err != nil {
 		logger.WithField("error", err).Fatal("Impossible to create NextCloud client")
@@ -146,6 +156,7 @@ func main() {
 	}
 	logger.WithField("remote_files", remoteFiles).Info("Retrieved remote files")
 
+	// Compute the files to download and to delete, and download and deletes them
 	toDownload, toDelete := diffFiles(localFiles, remoteFiles)
 	logger.WithField("to_download", toDownload).Info("Files to download")
 	logger.WithField("to_delete", toDelete).Info("Files to delete")

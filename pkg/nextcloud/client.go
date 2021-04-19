@@ -3,10 +3,16 @@ package nextcloud
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"net/http"
 )
 
-// Client is a NextCloud client for Kloud, it wraps http.Client
+// Errors returned by the NewClient function
+var (
+	ErrUnableToAppendCerts = errors.New("unable to append certificates to pool")
+)
+
+// Client is a NextCloud client for Kloud and wraps http.Client
 type Client struct {
 	http    http.Client
 	server  string
@@ -18,7 +24,7 @@ func NewClient(cacert []byte, server, shareID string) (Client, error) {
 	caCertPool := x509.NewCertPool()
 	ok := caCertPool.AppendCertsFromPEM(cacert)
 	if ok == false {
-		panic(ok)
+		return Client{}, ErrUnableToAppendCerts
 	}
 
 	httpClient := http.Client{

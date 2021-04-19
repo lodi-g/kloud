@@ -10,18 +10,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type tls struct {
-	Enabled bool   `yaml:"enabled"`
-	File    string `yaml:"file"`
-}
-
 // Config represents the configuration structure
 type Config struct {
 	Server  string `yaml:"server"`
 	ShareID string `yaml:"share"`
 }
 
-// Errors thrown by the ValidateConfig func
+// Errors returned by the ValidateConfig func
 var (
 	ErrMissingScheme = errors.New("missing scheme (http or https) in server")
 )
