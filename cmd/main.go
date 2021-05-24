@@ -33,7 +33,7 @@ func getLocalFiles(root string) (map[string]int64, error) {
 			return nil
 		}
 
-		relativePath := strings.ReplaceAll(path, consts.SyncFolder+"/", "")
+		relativePath := strings.ReplaceAll(path, consts.SyncDir+"/", "")
 		ret[relativePath] = fileinfo.Size()
 		return nil
 	})
@@ -74,7 +74,7 @@ func downloadFiles(client nextcloud.Client, files []string) error {
 		}
 
 		// Create directory if needed
-		fullPath := filepath.Join(consts.SyncFolder, fileName)
+		fullPath := filepath.Join(consts.SyncDir, fileName)
 		dir := filepath.Dir(fullPath)
 
 		if err := os.MkdirAll(dir, 0700); err != nil {
@@ -94,7 +94,7 @@ func deleteFiles(files []string) error {
 	// Iterate over the list of files and delete them
 	for _, fileName := range files {
 		// Delete the file
-		fullPath := filepath.Join(consts.SyncFolder, fileName)
+		fullPath := filepath.Join(consts.SyncDir, fileName)
 		if err := os.Remove(fullPath); err != nil {
 			return err
 		}
@@ -106,7 +106,7 @@ func deleteFiles(files []string) error {
 			return err
 		}
 
-		if len(files) == 0 && dir != consts.SyncFolder {
+		if len(files) == 0 && dir != consts.SyncDir {
 			os.Remove(dir)
 		}
 	}
@@ -135,7 +135,7 @@ func main() {
 	logger.Infof("Started with configuration: %+v", config)
 
 	// Get the list of files in the sync directory
-	localFiles, err := getLocalFiles(consts.SyncFolder)
+	localFiles, err := getLocalFiles(consts.SyncDir)
 	if err != nil {
 		logger.WithField("error", err).Fatal("Cannot read local filesystem")
 		os.Exit(1)

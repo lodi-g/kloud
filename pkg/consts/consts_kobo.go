@@ -5,6 +5,6 @@ package consts
 // Constants used by Kloud throughout the program
 const (
 	SDMountPoint = "/mnt/onboard"
-	SyncFolder   = SDMountPoint + "/KloudSync"
+	SyncDir      = SDMountPoint + "/KloudSync"
 	InternalDir  = SDMountPoint + "/.kloud"
 )
