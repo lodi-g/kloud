@@ -1,0 +1,55 @@
+on:
+  push:
+    tags:
+      - 'v*'
+
+name: Create Release
+
+jobs:
+  build:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Build binaries
+        run: make
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Release ${{ github.ref }}
+          draft: true
+          prerelease: false
+
+      - name: Upload Windows bootstrapper as release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./bootstrapper_win_amd64
+          asset_name: bootstrapper_win_amd64
+          asset_content_type: application/octet-stream
+
+      - name: Upload Linux bootstrapper as release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./bootstrapper_lin_amd64
+          asset_name: bootstrapper_lin_amd64
+          asset_content_type: application/octet-stream

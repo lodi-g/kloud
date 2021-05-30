@@ -12,8 +12,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-
-	"kloud/pkg/consts"
 )
 
 const (
@@ -21,6 +19,10 @@ const (
 share: %s
 `
 	archiveFilename = "KoboRoot.tgz"
+
+	sdMountPoint = "/mnt/onboard"
+	syncDir      = sdMountPoint + "/KloudSync"
+	internalDir  = sdMountPoint + "/.kloud"
 )
 
 //go:embed kloud
@@ -42,7 +44,7 @@ func help() {
 
 func prepareFolderToArchive(wd, config string) {
 	// Create .kloud
-	mntKloudPath := path.Join(wd, consts.SDMountPoint)
+	mntKloudPath := path.Join(wd, sdMountPoint)
 	if err := os.MkdirAll(mntKloudPath, os.ModePerm); err != nil {
 		log.Fatalf("Error creating .kloud directory: %v\n", err)
 	}
@@ -55,13 +57,13 @@ func prepareFolderToArchive(wd, config string) {
 		log.Fatalf("Error writing Kloud config: %v\n", err)
 	}
 	// Generate launcher script and copy to .kloud
-	launcherScript := fmt.Sprintf(launcherScriptTpl, consts.InternalDir, consts.SyncDir)
+	launcherScript := fmt.Sprintf(launcherScriptTpl, internalDir, syncDir)
 	if err := os.WriteFile(path.Join(mntKloudPath, "launcher.sh"), []byte(launcherScript), 0644); err != nil {
 		log.Fatalf("Error writing launcher script: %v\n", err)
 	}
 
 	// Create KloudSync (empty)
-	kloudSyncPath := consts.SyncDir
+	kloudSyncPath := syncDir
 	if err := os.MkdirAll(kloudSyncPath, os.ModePerm); err != nil {
 		log.Fatalf("Error creating KloudSync directory: %v\n", err)
 	}
@@ -73,7 +75,7 @@ func prepareFolderToArchive(wd, config string) {
 	}
 
 	// Format and copy to udev rules dir
-	launcherScriptPath := path.Join(consts.SDMountPoint, "launcher.sh")
+	launcherScriptPath := path.Join(sdMountPoint, "launcher.sh")
 	udevRules := fmt.Sprintf(udevRulesTpl, launcherScriptPath, launcherScriptPath)
 	if err := os.WriteFile(path.Join(udevPath, "97-kloud.rules"), []byte(udevRules), 0644); err != nil {
 		log.Fatalf("Error writing udev rules: %v\n", err)
