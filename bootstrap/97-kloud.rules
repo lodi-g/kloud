@@ -1,4 +1,0 @@
-KERNEL=="eth*", RUN+="TODO eth"
-KERNEL=="wlan*", RUN+="TODO wlan"
-KERNEL=="lo", RUN+="TODO lo"
-KERNEL=="loop0", RUN+="TODO loop0"

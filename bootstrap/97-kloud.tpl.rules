@@ -1,0 +1,2 @@
+KERNEL=="eth*", ACTION=="add", RUN+="%s"
+KERNEL=="wlan*", ACTION=="add", RUN+="%s"
