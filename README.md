@@ -16,7 +16,7 @@ When you connect to Wi-Fi, it will scan the local filesystem and the remote Next
 
 ### Preparation
 
-Run the bootstrap program (included in the release) like so, where serverURL is your NextCloud's server URL (e.g. https://cloud.example.com) and shareID is the end of the share link (e.g. https://cloud.example.com/s/abcd1234 - shareID is abcd1234).
+Run the bootstrap program (included in the release) like so, where serverURL is your NextCloud's server URL (e.g. https://cloud.example.com) and shareID is the last part of the share link (e.g. your share link is https://cloud.example.com/s/abcd1234, shareID is abcd1234).
 
 ```
 ./bootstrap serverURL shareID
