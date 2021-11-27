@@ -42,9 +42,12 @@ func help() {
 	fmt.Println("Example: https://cloud.server.com/s/eagB90Oy5uUa4eB.")
 }
 
-func prepareFolderToArchive(wd, config string) {
+func prepareFolderToArchive(wd, serverURL string, shareID string) {
+	// Create config file
+	config := fmt.Sprintf(configTpl, serverURL, shareID)
+
 	// Create .kloud
-	mntKloudPath := path.Join(wd, sdMountPoint)
+	mntKloudPath := path.Join(wd, internalDir)
 	if err := os.MkdirAll(mntKloudPath, os.ModePerm); err != nil {
 		log.Fatalf("Error creating .kloud directory: %v\n", err)
 	}
@@ -56,14 +59,16 @@ func prepareFolderToArchive(wd, config string) {
 	if err := os.WriteFile(path.Join(mntKloudPath, "config.yml"), []byte(config), 0644); err != nil {
 		log.Fatalf("Error writing Kloud config: %v\n", err)
 	}
+
 	// Generate launcher script and copy to .kloud
-	launcherScript := fmt.Sprintf(launcherScriptTpl, internalDir, syncDir)
-	if err := os.WriteFile(path.Join(mntKloudPath, "launcher.sh"), []byte(launcherScript), 0644); err != nil {
+	launcherScript := fmt.Sprintf(launcherScriptTpl, serverURL, internalDir, syncDir)
+	launcherScriptPath := path.Join(mntKloudPath, "launcher.sh")
+	if err := os.WriteFile(launcherScriptPath, []byte(launcherScript), 0644); err != nil {
 		log.Fatalf("Error writing launcher script: %v\n", err)
 	}
 
 	// Create KloudSync (empty)
-	kloudSyncPath := syncDir
+	kloudSyncPath := path.Join(wd, syncDir)
 	if err := os.MkdirAll(kloudSyncPath, os.ModePerm); err != nil {
 		log.Fatalf("Error creating KloudSync directory: %v\n", err)
 	}
@@ -75,8 +80,8 @@ func prepareFolderToArchive(wd, config string) {
 	}
 
 	// Format and copy to udev rules dir
-	launcherScriptPath := path.Join(sdMountPoint, "launcher.sh")
-	udevRules := fmt.Sprintf(udevRulesTpl, launcherScriptPath, launcherScriptPath)
+	onKoboLauncherPath := path.Join(internalDir, "launcher.sh")
+	udevRules := fmt.Sprintf(udevRulesTpl, onKoboLauncherPath, onKoboLauncherPath)
 	if err := os.WriteFile(path.Join(udevPath, "97-kloud.rules"), []byte(udevRules), 0644); err != nil {
 		log.Fatalf("Error writing udev rules: %v\n", err)
 	}
@@ -166,8 +171,7 @@ func main() {
 	}
 	defer os.RemoveAll(wd)
 
-	config := fmt.Sprintf(configTpl, *serverURL, *shareID)
-	prepareFolderToArchive(wd, config)
+	prepareFolderToArchive(wd, *serverURL, *shareID)
 	createArchive(wd)
 
 	fmt.Printf("A %s file was created, copy it to your .kobo folder to apply the update\n", archiveFilename)
